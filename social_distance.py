@@ -7,6 +7,7 @@ from itertools import combinations
 import time
 from datetime import datetime
 from PIL import ImageTk, Image
+from playsound import playsound
 
 
 def load_yolo(tiny=False):
@@ -33,7 +34,7 @@ def calculateDistance(p1, p2):
     return dst
 
 
-def createBox(frame, model, output_layers,  min_treshold, min_confidence, isVideo=False,):
+def createBox(frame, model, output_layers,  min_treshold, min_confidence, isVideo=False, showJarakBerbahaya=False, alarm=False):
     results = detect_people(frame, model, output_layers,
                             min_confidence, isVideo)
 
@@ -50,10 +51,17 @@ def createBox(frame, model, output_layers,  min_treshold, min_confidence, isVide
             # Periksa jarak antar objek yang terdeksi
             distance = calculateDistance(dx, dy)
             toMeter = 100
-            # print("Jarak : {:.2f} meter".format(distance / toMeter))
+
             if distance / toMeter < (min_treshold / toMeter):
                 violate.add(tuple(id1))
                 violate.add(tuple(id2))
+
+                if showJarakBerbahaya:
+                    print("Xi = {}, Xj = {}, Yi = {}, Yj = {}, p1 = {}, p2 = {}".format(
+                        id1[0], id2[0], id1[1], id2[1], dx**2, dy**2))
+                    print("Jarak : {:.2f} meter".format(distance / toMeter))
+                    draw_text(frame, "{:.2f} M".format(distance / toMeter), (255, 255, 255), pos=(
+                        ((id1[0] + id2[0]) // 2) - 50, (id1[1] + id2[1]) // 2), font_scale=1, text_color_bg=(0, 0, 0))
 
                 cv2.line(frame, (id1[0], id1[1]),
                          (id2[0], id2[1]), colorBerbahaya, 2)
@@ -90,6 +98,12 @@ def createBox(frame, model, output_layers,  min_treshold, min_confidence, isVide
     draw_text(frame, "Total Berbahaya : {}".format(totalBerbahaya),
               colorBerbahaya, pos=pos[1], font_scale=fontScale)
 
+    if alarm and totalBerbahaya > 0:
+        file = './alarm.wav'
+        if isVideo:
+            file = './beep.wav'
+        playsound(file, block=False)
+
     # cv2.imshow("Frame", frame)
 
 
@@ -107,14 +121,15 @@ def draw_text(img, text,
     text_w, text_h = text_size
     text_w += 10
     text_h += 10
-    cv2.rectangle(img, pos, (x + text_w, y + text_h), text_color_bg, -1)
+    cv2.rectangle(img, pos, (x + text_w, y + text_h),
+                  text_color_bg, cv2.FILLED)
     cv2.putText(img, text, (x + 5, y + text_h + font_scale - 10),
                 font, font_scale, text_color, font_thickness, cv2.LINE_AA)
 
     return text_size
 
 
-def detect_webcam(self, min_treshold=200, min_confidence=0.45):
+def detect_webcam(self, min_treshold=200, min_confidence=0.45, alarm=False):
     model, output_layers = load_yolo(tiny=True)
     # img = load_image(img_path)
     cap = cv2.VideoCapture(0)
@@ -152,7 +167,7 @@ def detect_webcam(self, min_treshold=200, min_confidence=0.45):
         # print(fps)
 
         createBox(frame, model, output_layers, min_treshold,
-                  min_confidence, isVideo=True)
+                  min_confidence, isVideo=True, alarm=alarm)
 
         # cv2.imshow("detections", img)
 
@@ -187,11 +202,12 @@ def detect_webcam(self, min_treshold=200, min_confidence=0.45):
     self.clearOutput()
 
 
-def detect_image(img_path, min_treshold, min_confidence):
+def detect_image(img_path, min_treshold, min_confidence, showJarakBerbahaya, alarm):
     model, output_layers = load_yolo()
     img = cv2.imread(img_path)
-    img = cv2.resize(img, None, fx=0.7, fy=0.7)
-    createBox(img, model, output_layers, min_treshold, min_confidence)
+    img = cv2.resize(img, None, fx=0.4, fy=0.4)
+    createBox(img, model, output_layers, min_treshold,
+              min_confidence, showJarakBerbahaya=showJarakBerbahaya, alarm=alarm)
 
     # cv2.imshow("Deteksi", img)
 
@@ -200,7 +216,7 @@ def detect_image(img_path, min_treshold, min_confidence):
     return img
 
 
-def detect_video(path, min_treshold=200, min_confidence=0.45, ttkProgress={}):
+def detect_video(path, min_treshold, min_confidence, showJarakBerbahaya, ttkProgress={}):
     model, output_layers = load_yolo(tiny=False)
     vc = cv2.VideoCapture(path)
 
@@ -227,7 +243,7 @@ def detect_video(path, min_treshold=200, min_confidence=0.45, ttkProgress={}):
         frame = cv2.resize(frame, (1200, 700))
 
         createBox(
-            frame, model, output_layers, min_treshold, min_confidence, isVideo=True)
+            frame, model, output_layers, min_treshold, min_confidence, isVideo=True, showJarakBerbahaya=showJarakBerbahaya)
 
         progress += 1
         print(progress / max_progress)

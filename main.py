@@ -1,7 +1,7 @@
 from tkinter.constants import END
 from social_distance import detect_image, detect_video, detect_webcam
 import tkinter as tk
-from tkinter import Listbox, filedialog, ttk
+from tkinter import BooleanVar, Listbox, filedialog, ttk
 from tkvideo import tkvideo
 from ttkbootstrap import Style
 from PIL import ImageTk, Image
@@ -54,27 +54,35 @@ class Application(tk.Frame):
                   text="2019130004", font='Poppins').grid(row=2, columnspan=6)
 
         ttk.Button(
-            tab, text="Buka Foto", width=20, command=self.open_image).grid(row=3, column=0, columnspan=2, sticky='e', pady=20)
+            tab, text="Buka Foto", width=20, command=self.open_image).grid(row=3, column=0, columnspan=2,  pady=20, padx=20, sticky='ew')
 
         ttk.Button(
-            tab, text="Buka Video", width=20, command=lambda: threading.Thread(target=self.open_video).start()).grid(row=3, column=2, columnspan=2)
+            tab, text="Buka Video", width=20, command=lambda: threading.Thread(target=self.open_video).start()).grid(row=3, column=2, columnspan=2, padx=20, sticky='ew')
 
         ttk.Button(
-            tab, text="Buka Kamera", width=20, command=lambda: threading.Thread(target=self.open_webcam).start()).grid(row=3, column=4, columnspan=2, sticky='w')
+            tab, text="Buka Kamera", width=20, command=lambda: threading.Thread(target=self.open_webcam).start()).grid(row=3, column=4, columnspan=2, padx=20, sticky='ew')
 
         ttk.Label(tab,
-                  text="Minimum Threshold", font='Poppins').grid(row=4, column=1)
+                  text="Minimum Threshold :", font='Poppins').grid(row=4, column=0)
 
         self.entryMinThreshold = ttk.Entry(tab)
         self.entryMinThreshold.insert(0, "200")
-        self.entryMinThreshold.grid(row=4, column=2)
+        self.entryMinThreshold.grid(row=4, column=1)
 
         ttk.Label(tab,
-                  text="Minimum Confidence", font='Poppins').grid(row=4, column=3)
+                  text="Minimum Confidence :", font='Poppins').grid(row=4, column=2)
 
         self.entryMinConfidence = ttk.Entry(tab)
         self.entryMinConfidence.insert(0, "0.45")
-        self.entryMinConfidence.grid(row=4, column=4)
+        self.entryMinConfidence.grid(row=4, column=3)
+
+        self.showJarakBerbahaya = BooleanVar()
+        ttk.Checkbutton(
+            tab, text='Tampilkan Jarak', style='Roundtoggle.Toolbutton', variable=self.showJarakBerbahaya).grid(row=4, column=4)
+
+        self.alarm = BooleanVar()
+        ttk.Checkbutton(
+            tab, text='Alarm', style='Roundtoggle.Toolbutton', variable=self.alarm).grid(row=4, column=5)
 
         self.outputFrame = ttk.Labelframe(
             tab, text='Output', height=520)
@@ -98,7 +106,7 @@ class Application(tk.Frame):
 
         # image = Image.open(path)
         img = detect_image(path, float(self.entryMinThreshold.get()),
-                           float(self.entryMinConfidence.get()))
+                           float(self.entryMinConfidence.get()), self.showJarakBerbahaya.get(), self.alarm.get())
         image = Image.fromarray(img)
 
         height_percent = (fixed_height / float(image.size[1]))
@@ -144,7 +152,7 @@ class Application(tk.Frame):
         _start_time = time()
 
         output_path = detect_video(path, float(self.entryMinThreshold.get()),
-                                   float(self.entryMinConfidence.get()), self.progress)
+                                   float(self.entryMinConfidence.get()), self.showJarakBerbahaya.get(), self.progress)
 
         t_sec = round(time() - _start_time)
         (t_min, t_sec) = divmod(t_sec, 60)
@@ -168,7 +176,7 @@ class Application(tk.Frame):
         self.clearOutput()
 
         detect_webcam(self, float(self.entryMinThreshold.get()),
-                      float(self.entryMinConfidence.get()))
+                      float(self.entryMinConfidence.get()), self.alarm.get())
 
     def clearOutput(self):
         if(self.img != None):
